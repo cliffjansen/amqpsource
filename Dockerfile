@@ -8,7 +8,8 @@ RUN wget -q https://dl.google.com/go/go1.10.4.linux-amd64.tar.gz && echo fa04efd
 ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/go/bin
 ENV GOPATH=/qpid-proton/build/go CGO_CFLAGS=-I/qpid-proton/build/c/include CGO_LDFLAGS='-L/qpid-proton/build/c -lssl -lcrypto -lsasl2'
 # build static proton libs and hide dynamic libs from cgo
-RUN cd qpid-proton && mkdir build && cd build && cmake -DBUILD_GO=ON -DBUILD_CPP=OFF -DBUILD_PYTHON=OFF -DBUILD_STATIC_LIBS=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release .. && make -j2 && mkdir c/unused && mv c/*.so* c/unused && ln c/libqpid-proton-core-static.a c/libqpid-proton-core.a
+# proton build problems on master with strech, use f53c768 temporarily (pre catch2 test harness)
+RUN cd qpid-proton && git checkout f53c768 && mkdir build && cd build && cmake -DBUILD_GO=ON -DBUILD_CPP=OFF -DBUILD_PYTHON=OFF -DBUILD_STATIC_LIBS=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release .. && make -j2 && mkdir c/unused && mv c/*.so* c/unused && ln c/libqpid-proton-core-static.a c/libqpid-proton-core.a
 RUN git clone git://github.com/knative/eventing.git qpid-proton/build/go/src/github.com/knative/eventing
 RUN git clone git://github.com/knative/eventing.git qpid-proton/build/go/src/github.com/knative/eventing-sources
 COPY cmd qpid-proton/build/go/src/github.com/knative/eventing-sources/cmd/
