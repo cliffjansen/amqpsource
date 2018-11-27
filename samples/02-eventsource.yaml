@@ -1,0 +1,14 @@
+apiVersion: sources.eventing.knative.dev/v1alpha1
+kind: ContainerSource
+metadata:
+ labels:
+   controller-tools.k8s.io: "1.0"
+ name: containersource-sample
+spec:
+ image: sjwoodman/amqp-adaptor:latest
+ args:
+  - '--amqpurl=amqp://artemis.myproject.svc.cluster.local:5672/knqueue'
+ sink:
+   apiVersion: eventing.knative.dev/v1alpha1
+   kind: Channel
+   name: testchannel
