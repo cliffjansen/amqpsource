@@ -46,29 +46,16 @@ type Adapter struct {
 
 var msgCount = int64(0)
 
-func fakeHW() (*amqp.Message, error) {
-	if msgCount > 10 {
-		time.Sleep(120 * time.Second)
-	} else if msgCount > 0 {
-		time.Sleep(10 * time.Second)
-	}
-	msgCount++
-	m := amqp.NewMessage()     
-	body := fmt.Sprintf("%v%v", "fake hello body ", msgCount)
-	m.Marshal(body)
-	return &m, nil
-}
-
 // Run creates a single AMQP connection/session/receiver to read messages, convert each to
 // a cloudevent and delivers to the sink.
 func (a *Adapter) Start() error {
 	//logger := logging.FromContext(context.TODO())
-
+	// ZZZ ??? do we fail fast if problems connecting/receiving or do our own backoff retry loop?
 	// set up signals so we handle the first shutdown signal gracefully
 
-	// ZZZ ???
 	log.Printf("Start with : %s", a.SourceURI)
-	container := electron.NewContainer(fmt.Sprintf("amqp_event_source_[%v]", os.Getpid()))
+	// ZZZ getpid not unique enough...
+	container := electron.NewContainer(fmt.Sprintf("amqp_event_source_002_[%v]", os.Getpid()))
 	url, err := amqp.ParseURL(a.SourceURI)
 	fatalIf(err)
 	log.Printf("Dial")
@@ -82,39 +69,25 @@ func (a *Adapter) Start() error {
 	r, err := c.Receiver(opts...)
 	fatalIf(err)
 	log.Printf("Receive")
-	if rm, err := r.Receive(); err == nil {
-		log.Printf("Got message: %s", rm.Message)
-		err = a.postMessage(&rm.Message)
-		if (err == nil) {
-			log.Printf("Message posted")
-			rm.Accept()
-		} else {
-			log.Printf("Failed to post message: %s", err)
-			rm.Reject()
-		}
-	}
-	log.Printf("Close")
-	c.Close(nil)
-	log.Printf("Close done")
-	// Evaluate success or fail
-
-	// Still going? Busy loop: generate fake messages for now
 	for {
-		m, err := fakeHW()
-		if err == nil {
-			log.Printf("Got message: %s", m)
-			err = a.postMessage(m)
-		}
-		// check err nack/ack/close connection
-		if err != nil {
-			log.Printf("Failed to post message: %s", err)
-//			m.Nack()
+		if rm, err := r.Receive(); err == nil {
+			log.Printf("Got message: %s", rm.Message)
+			err = a.postMessage(&rm.Message)
+			if (err == nil) {
+				log.Printf("Message posted")
+				rm.Accept()
+			} else {
+				log.Printf("Failed to post message: %s", err)
+				rm.Reject()
+				fatalIf(err)
+			}
 		} else {
-			log.Printf("Message posted")
-//			m.Ack()
+			log.Printf("Failed to receive: %s", err)
+			fatalIf(err)
 		}
 	}
-
+	//c.Close(nil)  where does this go? ZZZ
+	log.Printf("NOTREACHED reached")
 	return nil
 }
 
