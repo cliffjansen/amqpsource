@@ -27,6 +27,10 @@ import (
 	"time"
 	"log"
 	"strings"
+	"crypto/tls"
+	"crypto/x509"
+	"net/url"
+	"net"
 
 	"github.com/knative/pkg/cloudevents"
 
@@ -42,6 +46,9 @@ type Adapter struct {
 	SourceURI string
 	// SinkURI is the URI messages will be forwarded to as CloudEvents via HTTP(S).
 	SinkURI string
+	Credit uint
+	InsecureTlsConnection bool
+	RootCA string
 }
 
 var msgCount = int64(0)
@@ -56,17 +63,19 @@ func (a *Adapter) Start() error {
 	log.Printf("Start with : %s", a.SourceURI)
 	// ZZZ getpid not unique enough...
 	container := electron.NewContainer(fmt.Sprintf("amqp_event_source_002_[%v]", os.Getpid()))
-	url, err := amqp.ParseURL(a.SourceURI)
+	u, err := amqp.ParseURL(a.SourceURI)
 	fatalIf(err)
 	log.Printf("Dial")
-	c, err := container.Dial("tcp", url.Host) // NOTE: Dial takes just the Host part of the URL
+	tcpconn, err := a.dial(u)// ZZZ container.Dial("tcp", u.Host) // NOTE: Dial takes just the Host part of the URL
 	fatalIf(err)
-	addr := strings.TrimPrefix(url.Path, "/")
+	amqpconn, err := container.Connection(tcpconn)
+	fatalIf(err)
+
+	addr := strings.TrimPrefix(u.Path, "/")
 	opts := []electron.LinkOption{electron.Source(addr)}
-	arbitrary_prefetch := 10 // TODO: something sane/configurable
-	opts = append(opts, electron.Capacity(arbitrary_prefetch), electron.Prefetch(true))
+	opts = append(opts, electron.Capacity(int(a.Credit)), electron.Prefetch(true))
 	log.Printf("Create receiver")
-	r, err := c.Receiver(opts...)
+	r, err := amqpconn.Receiver(opts...)
 	fatalIf(err)
 	log.Printf("Receive")
 	for {
@@ -86,7 +95,7 @@ func (a *Adapter) Start() error {
 			fatalIf(err)
 		}
 	}
-	//c.Close(nil)  where does this go? ZZZ
+	//amqpconn.Close(nil)  where does this go? ZZZ
 	log.Printf("NOTREACHED reached")
 	return nil
 }
@@ -96,7 +105,7 @@ func (a *Adapter) postMessage(m *amqp.Message) error {
 
 	ctx := cloudevents.EventContext{
 		CloudEventsVersion: cloudevents.CloudEventsVersion,
-		EventType:          "amqp.delivery",
+		EventType:          "amqp.message.delivery",
 		EventID:            fmt.Sprintf("%v", msgCount), //ZZZ
 		EventTime:          time.Now(),  // TODO: revisit
 		Source:             "some_canon_amqpaddr_rep_TODO", // Expose no secrets
@@ -118,6 +127,27 @@ func (a *Adapter) postMessage(m *amqp.Message) error {
 	body, _ := ioutil.ReadAll(resp.Body)
 	logger.Debug("response", zap.Any("status", resp.Status), zap.Any("body", string(body)))
 	return nil
+}
+
+func (a *Adapter) dial(u *url.URL) (conn net.Conn, err error) {
+	if u.Scheme == "amqp" {
+		return net.Dial("tcp", u.Host)
+	}
+	var roots *x509.CertPool = nil
+	if a.RootCA != "" {
+		roots = x509.NewCertPool()    // override container's root CAs
+		log.Println("ZZZ1")
+		ok := roots.AppendCertsFromPEM([]byte(a.RootCA))
+		if !ok {
+			err = fmt.Errorf("adapter.dial: bad Root CA encoding") // Any other possible reason?
+			return
+		}
+	}
+
+	return tls.Dial("tcp", u.Host, &tls.Config{
+		RootCAs: roots,
+		InsecureSkipVerify: a.InsecureTlsConnection,
+	})
 }
 
 func fatalIf(err error) {

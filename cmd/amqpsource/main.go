@@ -36,11 +36,17 @@ func getRequiredEnv(envKey string) string {
 var (
 	sink      string
 	source    string
+	credit    uint
+	insecure  bool
+	rootca    string
 )
 
 func init() {
 	flag.StringVar(&sink, "sink", "", "the host url to receive the AMQP event")
 	flag.StringVar(&source, "amqpurl", "", "the AMQP source. e.g. amqp://host:port/queue_name")
+	flag.UintVar(&credit, "credit", 10, "the credit window for the message batching")
+	flag.BoolVar(&insecure, "insecureTls", false, "for insecure testing purposes only - disable TLS cerificate checking")
+	flag.StringVar(&rootca, "rootCA", "", "The root CA certificate (in PEM format) needed to verify the AMQP host if using TLS")
 }
 
 func main() {
@@ -61,6 +67,9 @@ func main() {
 	a := amqpsource.Adapter{
 		SourceURI: source,
 		SinkURI:   sink,
+		Credit:    credit,
+		InsecureTlsConnection: insecure,
+		RootCA:    rootca,
 	}
 
 	logger.Info("Starting AMQP Adapter. %v", zap.Reflect("adapter", a))
