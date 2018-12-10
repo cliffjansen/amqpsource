@@ -24,13 +24,13 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"time"
 	"log"
 	"strings"
 	"crypto/tls"
 	"crypto/x509"
 	"net/url"
 	"net"
+	"encoding/base64"
 
 	"github.com/knative/pkg/cloudevents"
 
@@ -48,6 +48,7 @@ type Adapter struct {
 	SinkURI string
 	Credit uint
 	InsecureTlsConnection bool
+	// Only needed if using TLS and default root CAs in container do not suffice.
 	RootCA string
 }
 
@@ -106,8 +107,8 @@ func (a *Adapter) postMessage(m *amqp.Message) error {
 	ctx := cloudevents.EventContext{
 		CloudEventsVersion: cloudevents.CloudEventsVersion,
 		EventType:          "amqp.message.delivery",
-		EventID:            fmt.Sprintf("%v", msgCount), //ZZZ
-		EventTime:          time.Now(),  // TODO: revisit
+		EventID:            messageIdString(m),
+		EventTime:          (*m).CreationTime(),
 		Source:             "some_canon_amqpaddr_rep_TODO", // Expose no secrets
 	}
 	req, err := cloudevents.Binary.NewRequest(a.SinkURI, m, ctx)
@@ -154,4 +155,28 @@ func fatalIf(err error) {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func messageIdString(m *amqp.Message) string {
+	if m == nil {
+		return ""
+	}
+	msgid := (*m).MessageId()
+	// AMQP specifies four legal Message ID data types, mapped to the following Go types by Proton.
+	// CloudEvents requires the Message ID as string type only.
+	switch msgid.(type) {
+	case string:
+		return msgid.(string)
+	case uint64:
+		return fmt.Sprintf("%d", msgid)
+	case amqp.UUID:
+		s := msgid.(amqp.UUID).String()
+		// s formatted as "UUID(c4b04c04-8a8e-4a7d-948a-5e5843433b4d)" , strip enclosing "UUID()" notation
+		return s[5:len(s)-1]
+	case amqp.Binary:
+		return base64.StdEncoding.EncodeToString([]byte(msgid.(amqp.Binary)))
+	default:
+		return ""
+	}
+
 }
