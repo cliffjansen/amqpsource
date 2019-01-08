@@ -20,36 +20,35 @@ import (
 	"fmt"
 
 	"github.com/knative/eventing-sources/pkg/apis/sources/v1alpha1"
-	"k8s.io/api/apps/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// ReceiveAdapterArgs are the arguments needed to create a AMQP Source Receive Adapter. Every
-// field is required.
-type ReceiveAdapterArgs struct {
-	Image          string
-	Source         *v1alpha1.AmqpSource
-	Labels         map[string]string
-	AmqpURI        string
-	SinkURI        string
+// ZZZ doc here
+type AdapterArguments struct {
+	Image   string
+	Source  *v1alpha1.AmqpSource
+	Labels  map[string]string
+	SinkURI string
 }
 
-// MakeReceiveAdapter generates (but does not insert into K8s) the Receive Adapter Deployment for
-// AMQP Sources.
-func MakeReceiveAdapter(args *ReceiveAdapterArgs) *v1.Deployment {
-	replicas := int32(1)
-	return &v1.Deployment{
+func MakeDeployment(org *appsv1.Deployment, args *AdapterArguments) *appsv1.Deployment {
+
+	deploy := &appsv1.Deployment{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "apps/v1",
+			Kind:       "Deployment",
+		},
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace:    args.Source.Namespace,
 			GenerateName: fmt.Sprintf("amqpsource-%s-", args.Source.Name),
+			Namespace:    args.Source.Namespace,
 			Labels:       args.Labels,
 		},
-		Spec: v1.DeploymentSpec{
+		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{
 				MatchLabels: args.Labels,
 			},
-			Replicas: &replicas,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
@@ -61,22 +60,25 @@ func MakeReceiveAdapter(args *ReceiveAdapterArgs) *v1.Deployment {
 					ServiceAccountName: args.Source.Spec.ServiceAccountName,
 					Containers: []corev1.Container{
 						{
-							Name:  "receive-adapter",
-							Image: args.Image,
+							Name:            "receive-adapter",
+							Image:           args.Image,
 							Env: []corev1.EnvVar{
-								{
-									Name:  "AMQP_URI",
-									Value: args.Source.Spec.AmqpURI,
-								},
 								{
 									Name:  "SINK_URI",
 									Value: args.SinkURI,
 								},
+								{
+									Name:  "AMQP_URI",
+									Value: args.AmqpURI,
+								},
 							},
+							ImagePullPolicy: corev1.PullIfNotPresent,
 						},
 					},
 				},
 			},
 		},
 	}
+
+	return deploy
 }

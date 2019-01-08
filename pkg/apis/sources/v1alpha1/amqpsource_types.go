@@ -32,8 +32,24 @@ var _ = duck.VerifyType(&AmqpSource{}, &duckv1alpha1.Conditions{})
 
 // AmqpSourceSpec defines the desired state of the source.
 type AmqpSourceSpec struct {
-	// Connection and link/attach info to reach AMQP endpoint (AKA source).
-	AmqpURI string `json:"amqpUri"`
+
+	// AMQP endpoint address and optional connection details.  If
+	// connection details are provided, they override other provided
+	// connection configuration.
+	// Examples:
+	//  myqueue
+	//  amqps://host:port/mytopic
+	Address string `json:"address"`
+
+	// Kubernetes secret containing default connection configuration
+	// including password or TLS private key information.  Optional if
+	// Address contains sufficient connection details. ZZZ format?
+	ConfigSecret corev1.SecretKeySelector `json:"configSecret,omitempty"`
+
+	// Receiver credit window.  Number of in flight messages not yet forwarded
+	// to the sink.  Default = 10.  Legal values: 1-10000.
+	// +optional
+	Credit uint `json:"credit"`
 
 	// ServiceAccountName is the name of the ServiceAccount to use to run this
 	// source.

@@ -54,8 +54,7 @@ type Adapter struct {
 	// SinkURI is the URI messages will be forwarded to as CloudEvents via HTTP(S).
 	SinkURI string
 	Credit uint
-	InsecureTlsConnection bool
-	// Only needed if using TLS and default root CAs in container do not suffice.
+	// Only needed if using TLS and default root CAs in container do not suffice.  TODO: dump for ConfigSecret.
 	RootCA string
 	// The canonical name for the CloudEvents "source" Context Attribute.
 	SpecSource string
@@ -189,7 +188,7 @@ func (a *Adapter) dial(u *url.URL) (conn net.Conn, err error) {
 
 	return tls.Dial("tcp", u.Host, &tls.Config{
 		RootCAs: roots,
-		InsecureSkipVerify: a.InsecureTlsConnection,
+		InsecureSkipVerify: false,
 	})
 }
 
