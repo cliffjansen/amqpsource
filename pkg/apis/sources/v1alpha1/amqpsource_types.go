@@ -66,9 +66,19 @@ const (
 	// AmqpSourceConditionReady has status True when the
 	// source is ready to send events.
 	AmqpSourceConditionReady = duckv1alpha1.ConditionReady
+
+	// AmqpSourceConditionSinkProvided has status True when the
+	// AmqpSource has been configured with a sink target.
+	AmqpSourceConditionSinkProvided duckv1alpha1.ConditionType = "SinkProvided"
+
+	// AmqpSourceConditionDeployed has status True when the
+	// AmqpSource has had it's receive adapter deployment created.
+	AmqpSourceConditionDeployed duckv1alpha1.ConditionType = "Deployed"
 )
 
-var amqpSourceCondSet = duckv1alpha1.NewLivingConditionSet()
+var amqpSourceCondSet = duckv1alpha1.NewLivingConditionSet(
+	AmqpSourceConditionSinkProvided,
+	AmqpSourceConditionDeployed)
 
 // AmqpSourceStatus defines the observed state of the source.
 type AmqpSourceStatus struct {
@@ -98,16 +108,30 @@ func (s *AmqpSourceStatus) InitializeConditions() {
 	amqpSourceCondSet.Manage(s).InitializeConditions()
 }
 
-// MarkReady sets the condition that the ContainerSource owned by
-// the source has Ready status True.
-func (s *AmqpSourceStatus) MarkReady() {
-	amqpSourceCondSet.Manage(s).MarkTrue(AmqpSourceConditionReady)
+// MarkSink sets the condition that the source has a sink configured.
+func (s *AmqpSourceStatus) MarkSink(uri string) {
+	s.SinkURI = uri
+	if len(uri) > 0 {
+		condSet.Manage(s).MarkTrue(AmqpSourceConditionSinkProvided)
+	} else {
+		condSet.Manage(s).MarkUnknown(AmqpSourceConditionSinkProvided,
+			"SinkEmpty", "Sink has resolved to empty.%s", "")
+	}
 }
 
-// MarkUnready sets the condition that the ContainerSource owned by
-// the source does not have Ready status True.
-func (s *AmqpSourceStatus) MarkUnready(reason, messageFormat string, messageA ...interface{}) {
-	amqpSourceCondSet.Manage(s).MarkFalse(AmqpSourceConditionReady, reason, messageFormat, messageA...)
+// MarkNoSink sets the condition that the source does not have a sink configured.
+func (s *AmqpSourceStatus) MarkNoSink(reason, messageFormat string, messageA ...interface{}) {
+	condSet.Manage(s).MarkFalse(AmqpSourceConditionSinkProvided, reason, messageFormat, messageA...)
+}
+
+// MarkDeployed sets the condition that the source has been deployed.
+func (s *AmqpSourceStatus) MarkDeployed() {
+	condSet.Manage(s).MarkTrue(AmqpSourceConditionDeployed)
+}
+
+// MarkDeploying sets the condition that the source is deploying.
+func (s *AmqpSourceStatus) MarkDeploying(reason, messageFormat string, messageA ...interface{}) {
+	condSet.Manage(s).MarkUnknown(AmqpSourceConditionDeployed, reason, messageFormat, messageA...)
 }
 
 // +genclient

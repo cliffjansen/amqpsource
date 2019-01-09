@@ -18,8 +18,6 @@ package amqpsource
 
 import (
 	"context"
-	"fmt"
-	"strings"
 
 	"go.uber.org/zap"
 
@@ -45,6 +43,7 @@ type reconciler struct {
 	client   client.Client
 	scheme   *runtime.Scheme
 	recorder record.EventRecorder
+	receiveAdapterImage string
 }
 
 // Reconcile compares the actual state with the desired, and attempts to
@@ -72,12 +71,12 @@ func (r *reconciler) Reconcile(ctx context.Context, object runtime.Object) (runt
 
 	source.Status.InitializeConditions()
 
-	sinkURI, err := sinks.GetSinkURI(ctx, r.client, src.Spec.Sink, src.Namespace)
+	sinkURI, err := sinks.GetSinkURI(ctx, r.client, source.Spec.Sink, source.Namespace)
 	if err != nil {
-		src.Status.MarkNoSink("NotFound", "")
-		return src, err
+		source.Status.MarkNoSink("NotFound", "")
+		return source, err
 	}
-	src.Status.MarkSink(sinkURI)
+	source.Status.MarkSink(sinkURI)
 
 	args := &resources.AdapterArguments{
 		Image: r.receiveAdapterImage,
@@ -180,11 +179,11 @@ func (r *reconciler) InjectClient(c client.Client) error {
 	return nil
 }
 
-func (r *reconciler) getLabelSelector(src *v1alpha1.AwsSqsSource) labels.Selector {
+func (r *reconciler) getLabelSelector(src *v1alpha1.AmqpSource) labels.Selector {
 	return labels.SelectorFromSet(getLabels(src))
 }
 
-func getLabels(src *v1alpha1.AwsSqsSource) map[string]string {
+func getLabels(src *v1alpha1.AmqpSource) map[string]string {
 	return map[string]string{
 		"knative-eventing-source":      controllerAgentName,
 		"knative-eventing-source-name": src.Name,

@@ -62,7 +62,7 @@ func Add(mgr manager.Manager) error {
 		Owns:      []runtime.Object{&v1.Deployment{}},
 		Reconciler: &reconciler{
 			scheme:              mgr.GetScheme(),
-			clientCreator:       amqpSourceClientCreator,
+			recorder:   mgr.GetRecorder(controllerAgentName),
 			receiveAdapterImage: raImage,
 		},
 	}

@@ -69,7 +69,7 @@ func MakeDeployment(org *appsv1.Deployment, args *AdapterArguments) *appsv1.Depl
 								},
 								{
 									Name:  "AMQP_URI",
-									Value: args.AmqpURI,
+									Value: "ZZZ ZZZ ZZZ",
 								},
 							},
 							ImagePullPolicy: corev1.PullIfNotPresent,
