@@ -21,7 +21,7 @@ import (
 	"os"
 	"github.com/knative/eventing-sources/pkg/adapter/amqpsource"
 	"go.uber.org/zap"
-	"flag"
+//	"flag"
 )
 
 func getRequiredEnv(envKey string) string {
@@ -42,11 +42,12 @@ var (
 )
 
 func init() {
-	flag.StringVar(&sink, "sink", "", "the host url to receive the AMQP event")
-	flag.StringVar(&source, "amqpurl", "", "the AMQP source. e.g. amqp://host:port/queue_name")
-	flag.UintVar(&credit, "credit", 10, "the credit window for the message batching")
-	flag.BoolVar(&insecure, "insecureTls", false, "for insecure testing purposes only - disable TLS cerificate checking")
-	flag.StringVar(&rootca, "rootCA", "", "The root CA certificate (in PEM format) needed to verify the AMQP host if using TLS")
+//	flag.StringVar(&sink, "sink", "", "the host url to receive the AMQP event")
+//	flag.StringVar(&source, "amqpurl", "", "the AMQP source. e.g. amqp://host:port/queue_name")
+//	flag.UintVar(&credit, "credit", 10, "the credit window for the message batching")
+//	flag.BoolVar(&insecure, "insecureTls", false, "for insecure testing purposes only - disable TLS cerificate checking")
+//	flag.StringVar(&rootca, "rootCA", "", "The root CA certificate (in PEM format) needed to verify the AMQP host if using TLS")
+	credit = 11
 }
 
 func main() {
@@ -55,7 +56,9 @@ func main() {
 		log.Fatalf("unable to create logger: %v", err)
 	}
 
-	flag.Parse()
+//	flag.Parse()
+	sink = getRequiredEnv("SINK_URI")
+	source = getRequiredEnv("AMQP_URI")
 	if (len(sink) > 0) {
 		// Called via ContainerSource controller with --sink=foo --amqpurl=amqp://host:port/queue
 	} else {
@@ -68,7 +71,6 @@ func main() {
 		SourceURI: source,
 		SinkURI:   sink,
 		Credit:    credit,
-		InsecureTlsConnection: insecure,
 		RootCA:    rootca,
 	}
 

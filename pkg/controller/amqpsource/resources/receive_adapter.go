@@ -31,6 +31,8 @@ type AdapterArguments struct {
 	Source  *v1alpha1.AmqpSource
 	Labels  map[string]string
 	SinkURI string
+	Address string
+	// TODO: full connect-config opts
 }
 
 func MakeDeployment(org *appsv1.Deployment, args *AdapterArguments) *appsv1.Deployment {
@@ -69,7 +71,7 @@ func MakeDeployment(org *appsv1.Deployment, args *AdapterArguments) *appsv1.Depl
 								},
 								{
 									Name:  "AMQP_URI",
-									Value: "ZZZ ZZZ ZZZ",
+									Value: args.Address,
 								},
 							},
 							ImagePullPolicy: corev1.PullIfNotPresent,

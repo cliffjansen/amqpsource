@@ -43,8 +43,8 @@ type AmqpSourceSpec struct {
 
 	// Kubernetes secret containing default connection configuration
 	// including password or TLS private key information.  Optional if
-	// Address contains sufficient connection details. ZZZ format?
-	ConfigSecret corev1.SecretKeySelector `json:"configSecret,omitempty"`
+	// Address contains sufficient connection details. ZZZ format? Namespace specifier?
+	ConfigSecret string `json:"configSecret,omitempty"`
 
 	// Receiver credit window.  Number of in flight messages not yet forwarded
 	// to the sink.  Default = 10.  Legal values: 1-10000.

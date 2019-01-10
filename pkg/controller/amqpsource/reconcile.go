@@ -83,6 +83,7 @@ func (r *reconciler) Reconcile(ctx context.Context, object runtime.Object) (runt
 		Source:  source,
 		Labels:  getLabels(source),
 		SinkURI: sinkURI,
+		Address: source.Spec.Address,
 	}
 
 	deploy, err := r.getDeployment(ctx, source)
