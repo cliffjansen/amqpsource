@@ -18,6 +18,7 @@ package resources
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/knative/eventing-sources/pkg/apis/sources/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -35,8 +36,21 @@ type AdapterArguments struct {
 	// TODO: full connect-config opts
 }
 
+const (
+	credsVolume    = "amqp-config"
+	credsMountPath = "/var/secrets/amqp"
+)
+
+
 func MakeDeployment(org *appsv1.Deployment, args *AdapterArguments) *appsv1.Deployment {
 
+	fooZZZ := args.Source.Spec.ConfigSecret.Name
+	if fooZZZ == "" {
+		fooZZZ = "is_null"
+	} else {
+		log.Printf("ZZZ amqp makedeployment : %t", args.Source.Spec.ConfigSecret)
+	}
+	log.Printf("ZZZ amqp makedeployment : %d and %s  secret %s", args.Source.Spec.Credit, args.Source.Spec.ConfigSecret.Key, fooZZZ)
 	deploy := &appsv1.Deployment{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "apps/v1",
@@ -82,5 +96,28 @@ func MakeDeployment(org *appsv1.Deployment, args *AdapterArguments) *appsv1.Depl
 		},
 	}
 
+	secretName := args.Source.Spec.ConfigSecret.Name
+	if secretName != "" {
+		mounts := []corev1.VolumeMount{  { Name:      credsVolume, MountPath: credsMountPath } }
+		deploy.Spec.Template.Spec.Containers[0].VolumeMounts = mounts
+
+		vols := []corev1.Volume{
+			{
+				Name: credsVolume,
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: secretName,
+					},
+				},
+			},
+		}
+		deploy.Spec.Template.Spec.Volumes = vols
+
+		secretEnv := corev1.EnvVar{
+			Name: "AMQP_CREDENTIALS",
+			Value: credsMountPath,
+		}
+		deploy.Spec.Template.Spec.Containers[0].Env = append(deploy.Spec.Template.Spec.Containers[0].Env, secretEnv)
+	}
 	return deploy
 }

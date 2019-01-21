@@ -386,9 +386,9 @@ spec:
               minLength: 1
               type: string
             configSecret:
-              type: string
+              type: object
             credit:
-              type: uint
+              type: integer
             serviceAccountName:
               type: string
             sink:

@@ -51,9 +51,12 @@ type reconciler struct {
 func (r *reconciler) Reconcile(ctx context.Context, object runtime.Object) (runtime.Object, error) {
 	logger := logging.FromContext(ctx)
 
+	logger.Warnf("AMQP source reconcile ZZZ start")
+
 	source, ok := object.(*v1alpha1.AmqpSource)
 	if !ok {
 		logger.Error("could not find AMQP source", zap.Any("object", object))
+		logger.Warnf("AMQP source reconcile ZZZ 2  %s", source.Name)
 		return object, nil
 	}
 
@@ -61,11 +64,13 @@ func (r *reconciler) Reconcile(ctx context.Context, object runtime.Object) (runt
 	accessor, err := meta.Accessor(source)
 	if err != nil {
 		logger.Warnf("Failed to get metadata accessor: %s", zap.Error(err))
+		logger.Warnf("AMQP source reconcile ZZZ 3  %s", source.Name)
 		return object, err
 	}
 	// No need to reconcile if the source has been marked for deletion.
 	deletionTimestamp := accessor.GetDeletionTimestamp()
 	if deletionTimestamp != nil {
+		logger.Warnf("AMQP DTS no reconcile ZZZ %s", source.Name)
 		return object, nil
 	}
 
@@ -74,6 +79,7 @@ func (r *reconciler) Reconcile(ctx context.Context, object runtime.Object) (runt
 	sinkURI, err := sinks.GetSinkURI(ctx, r.client, source.Spec.Sink, source.Namespace)
 	if err != nil {
 		source.Status.MarkNoSink("NotFound", "")
+		logger.Warnf("AMQP source reconcile ZZZ 4  %s", source.Name)
 		return source, err
 	}
 	source.Status.MarkSink(sinkURI)
@@ -89,9 +95,11 @@ func (r *reconciler) Reconcile(ctx context.Context, object runtime.Object) (runt
 	deploy, err := r.getDeployment(ctx, source)
 	if err != nil {
 		if errors.IsNotFound(err) {
+			logger.Warnf("AMQP reconcile  create dep ZZZ %d", source.Name)
 			deploy, err = r.createDeployment(ctx, source, nil, args)
 			if err != nil {
 				r.recorder.Eventf(source, corev1.EventTypeNormal, "DeploymentBlocked", "waiting for %v", err)
+				logger.Warnf("AMQP source reconcile ZZZ 5  %s", source.Name)
 				return object, err
 			}
 			r.recorder.Eventf(source, corev1.EventTypeNormal, "Deployed", "Created deployment %q", deploy.Name)
@@ -99,8 +107,10 @@ func (r *reconciler) Reconcile(ctx context.Context, object runtime.Object) (runt
 			// Since the Deployment has just been created, there's nothing more
 			// to do until it gets a status. This AmqpSource will be reconciled
 			// again when the Deployment is updated.
+			logger.Warnf("AMQP reconcile  create dep ZZZ worked        good news            %d", source.Name)
 			return object, nil
 		}
+		logger.Warnf("AMQP source reconcile ZZZ 6  %s", source.Name)
 		return object, err
 	}
 
@@ -110,6 +120,7 @@ func (r *reconciler) Reconcile(ctx context.Context, object runtime.Object) (runt
 	// be equal to expected. Use DeepDerivative to compare only the fields that
 	// are set in expected.
 	if !equality.Semantic.DeepDerivative(expected.Spec, deploy.Spec) {
+		logger.Warnf("AMQP source reconcile update time ZZZ %s", source.Name)
 		deploy.Spec = expected.Spec
 		err := r.client.Update(ctx, deploy)
 		// if no error, update the status.
@@ -120,14 +131,17 @@ func (r *reconciler) Reconcile(ctx context.Context, object runtime.Object) (runt
 			r.recorder.Eventf(source, corev1.EventTypeWarning, "DeployNeedsUpdate", "Failed to update deployment %q", deploy.Name)
 		}
 		// Return after this update or error and reconcile again
+		logger.Warnf("AMQP source reconcile ZZZ 7  %s", source.Name)
 		return object, err
 	}
 
 	// Update source status
 	if deploy.Status.ReadyReplicas > 0 {
+		logger.Warnf("AMQP reconcile  mark deployed ZZZ %s", source.Name)
 		source.Status.MarkDeployed()
 	}
 
+	logger.Warnf("AMQP source reconcile ZZZ 99  %s", source.Name)
 	return source, nil
 }
 
