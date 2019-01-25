@@ -43,7 +43,7 @@ type AmqpSourceSpec struct {
 
 	// Kubernetes secret containing default connection configuration
 	// including password or TLS private key information.  Optional if
-	// Address contains sufficient connection details. ZZZ format? Namespace specifier?
+	// Address contains sufficient connection details.
 	// +optional
 	ConfigSecret corev1.SecretKeySelector `json:"configSecret,omitempty"`
 

@@ -43,14 +43,6 @@ const (
 
 
 func MakeDeployment(org *appsv1.Deployment, args *AdapterArguments) *appsv1.Deployment {
-
-	fooZZZ := args.Source.Spec.ConfigSecret.Name
-	if fooZZZ == "" {
-		fooZZZ = "is_null"
-	} else {
-		log.Printf("ZZZ amqp makedeployment : %t", args.Source.Spec.ConfigSecret)
-	}
-	log.Printf("ZZZ amqp makedeployment : %d and %s  secret %s", args.Source.Spec.Credit, args.Source.Spec.ConfigSecret.Key, fooZZZ)
 	deploy := &appsv1.Deployment{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "apps/v1",

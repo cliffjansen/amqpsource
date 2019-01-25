@@ -55,7 +55,6 @@ func Add(mgr manager.Manager) error {
 		return fmt.Errorf("required environment variable '%s' not defined", raImageEnvVar)
 	}
 
-	log.Println("Adding the AMQP Source controller. ZZZ1")
 	p := &sdk.Provider{
 		AgentName: controllerAgentName,
 		Parent:    &v1alpha1.AmqpSource{},
