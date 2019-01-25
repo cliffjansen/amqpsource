@@ -16,6 +16,7 @@ limitations under the License.
 
 // Package amqpsource implements the AmqpSource controller.
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=sources.eventing.knative.dev,resources=amqpsourcesources,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=sources.eventing.knative.dev,resources=amqpsources,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=sources.eventing.knative.dev,resources=amqpsources/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=eventing.knative.dev,resources=channels,verbs=get;list;watch
 package amqpsource

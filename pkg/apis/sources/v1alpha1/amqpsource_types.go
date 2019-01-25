@@ -141,6 +141,7 @@ func (s *AmqpSourceStatus) MarkDeploying(reason, messageFormat string, messageA 
 
 // AmqpSource is the Schema for the amqpsources API
 // +k8s:openapi-gen=true
+// +kubebuilder:subresource:status
 // +kubebuilder:categories=all,knative,eventing,sources
 type AmqpSource struct {
 	metav1.TypeMeta   `json:",inline"`
