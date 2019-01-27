@@ -18,7 +18,7 @@ package resources
 
 import (
 	"fmt"
-	"log"
+	"strconv"
 
 	"github.com/knative/eventing-sources/pkg/apis/sources/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -39,10 +39,15 @@ type AdapterArguments struct {
 const (
 	credsVolume    = "amqp-config"
 	credsMountPath = "/var/secrets/amqp"
+	defaultCredit = 10
 )
 
 
 func MakeDeployment(org *appsv1.Deployment, args *AdapterArguments) *appsv1.Deployment {
+	credit := args.Source.Spec.Credit
+	if credit <= 0 {
+		credit = defaultCredit
+	}
 	deploy := &appsv1.Deployment{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "apps/v1",
@@ -78,6 +83,10 @@ func MakeDeployment(org *appsv1.Deployment, args *AdapterArguments) *appsv1.Depl
 								{
 									Name:  "AMQP_URI",
 									Value: args.Address,
+								},
+								{
+									Name:  "AMQP_CREDIT",
+									Value: strconv.Itoa(credit),
 								},
 							},
 							ImagePullPolicy: corev1.PullIfNotPresent,

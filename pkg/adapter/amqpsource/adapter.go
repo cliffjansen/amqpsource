@@ -32,6 +32,7 @@ import (
 	"net/url"
 	"net"
 	"encoding/base64"
+	"encoding/json"
 
 	"github.com/knative/pkg/cloudevents"
 
@@ -53,27 +54,36 @@ type Adapter struct {
 	SourceURI string
 	// SinkURI is the URI messages will be forwarded to as CloudEvents via HTTP(S).
 	SinkURI string
-	Credit uint
-	// Only needed if using TLS and default root CAs in container do not suffice.  TODO: dump for ConfigSecret.
-	RootCA string
+	// Link credit to use on the path.
+	Credit int
+	// Optional connect-config configuration, including password/TLS secrets
+	CredsPath string
 	// The canonical name for the CloudEvents "source" Context Attribute.
 	SpecSource string
+	// The CA root(s) in pem format to authenticate the connection
+	RootCA []byte
 }
 
 var msgCount = int64(0)
+
 
 // Run creates a single AMQP connection/session/receiver to read messages, convert each to
 // a cloudevent and delivers to the sink.
 func (a *Adapter) Start() error {
 	//logger := logging.FromContext(context.TODO())
-	// ZZZ ??? do we fail fast if problems connecting/receiving or do our own backoff retry loop?
-	// set up signals so we handle the first shutdown signal gracefully
+	// TODO: set up signals so we handle the first shutdown signal gracefully
 
 	log.Printf("Start with ZZZ1  : %s and %s", a.SourceURI, os.Getenv("HOSTNAME"))
 	// Use Kubernetes PODNAME-uuid as descriptive and unique AMQP container name:
 	container := electron.NewContainer(fmt.Sprintf("%s", os.Getenv("HOSTNAME")))
-	u, err := amqp.ParseURL(a.SourceURI)
+
+	// Create connect url from address URI + connect-config data + AMQP defaults
+	u, err := url.Parse(a.SourceURI)
 	fatalIf(err)
+	a.applyConfig(u)
+	err = amqp.UpdateURL(u)
+	fatalIf(err)
+
 	a.SpecSource = fmt.Sprintf("%s://%s:%s/%s", u.Scheme, u.Hostname(), u.Port(), u.Path)
 	log.Printf("Dial")
 	tcpconn, err := a.dial(u)
@@ -177,9 +187,9 @@ func (a *Adapter) dial(u *url.URL) (conn net.Conn, err error) {
 		return net.Dial("tcp", u.Host)
 	}
 	var roots *x509.CertPool = nil
-	if a.RootCA != "" {
+	if len(a.RootCA) > 0 {
 		roots = x509.NewCertPool()    // override container's root CAs
-		ok := roots.AppendCertsFromPEM([]byte(a.RootCA))
+		ok := roots.AppendCertsFromPEM(a.RootCA)
 		if !ok {
 			err = fmt.Errorf("adapter.dial: bad Root CA encoding") // Any other possible reason?
 			return
@@ -195,6 +205,53 @@ func (a *Adapter) dial(u *url.URL) (conn net.Conn, err error) {
 func fatalIf(err error) {
 	if err != nil {
 		log.Fatal(err)
+	}
+}
+
+type ConnectConfig struct {
+	Scheme    string `json:"scheme"`
+	Host      string `json:"host"`
+	Port      string `json:"port"`
+	User      string `json:"user"`
+	Password  string `json:"password"`
+	// TODO: SASL and TLS sub-structs
+}
+
+func parseConfigBytes(bytes []byte) *ConnectConfig {
+	var config ConnectConfig
+	err := json.Unmarshal(bytes, &config)
+	fatalIf(err);
+	return &config
+}
+
+func (a *Adapter) applyConfig(u *url.URL) {
+	// values already in url take precedence over connect-config data
+	if a.CredsPath == "" {
+		return
+	}
+	cdir := a.CredsPath
+	if !strings.HasSuffix(cdir, "/") {
+		cdir += "/"
+	}
+	var b []byte
+	var err error
+	if b, err = ioutil.ReadFile(cdir + "connect-config"); err == nil {
+		if config := parseConfigBytes(b); config != nil {
+			if u.Scheme == "" {
+				u.Scheme = config.Scheme
+			}
+			if u.Host == "" {
+				u.Host = net.JoinHostPort(config.Host, config.Port)
+			}
+			if u.User == nil {
+				u.User = url.UserPassword(config.User, config.Password)
+			}
+			log.Printf("config got with ZZZ1  : %v", config)
+		}
+	}
+	if b, err = ioutil.ReadFile(cdir + "tls.ca"); err == nil {
+		a.RootCA = b
+		log.Printf("tls.ca found with ZZZ1  : %v", b)
 	}
 }
 

@@ -21,7 +21,7 @@ import (
 	"os"
 	"github.com/knative/eventing-sources/pkg/adapter/amqpsource"
 	"go.uber.org/zap"
-//	"flag"
+	"strconv"
 )
 
 func getRequiredEnv(envKey string) string {
@@ -32,23 +32,11 @@ func getRequiredEnv(envKey string) string {
 	return val
 }
 
-
 var (
 	sink      string
 	source    string
-	credit    uint
-	insecure  bool
-	rootca    string
+	credit    int
 )
-
-func init() {
-//	flag.StringVar(&sink, "sink", "", "the host url to receive the AMQP event")
-//	flag.StringVar(&source, "amqpurl", "", "the AMQP source. e.g. amqp://host:port/queue_name")
-//	flag.UintVar(&credit, "credit", 10, "the credit window for the message batching")
-//	flag.BoolVar(&insecure, "insecureTls", false, "for insecure testing purposes only - disable TLS cerificate checking")
-//	flag.StringVar(&rootca, "rootCA", "", "The root CA certificate (in PEM format) needed to verify the AMQP host if using TLS")
-	credit = 11
-}
 
 func main() {
 	logger, err := zap.NewProduction()
@@ -56,22 +44,20 @@ func main() {
 		log.Fatalf("unable to create logger: %v", err)
 	}
 
-//	flag.Parse()
 	sink = getRequiredEnv("SINK_URI")
 	source = getRequiredEnv("AMQP_URI")
-	if (len(sink) > 0) {
-		// Called via ContainerSource controller with --sink=foo --amqpurl=amqp://host:port/queue
-	} else {
-		// Called via custom controller, args in the environ
-		source = getRequiredEnv("AMQP_URI")
-		sink = getRequiredEnv("SINK")
+	credit, _ = strconv.Atoi(getRequiredEnv("AMQP_CREDIT"))
+	if credit <= 0 {
+		log.Fatalf("bad AMQP credit value: %v", credit)
 	}
+
+	credsPath, _ := os.LookupEnv("AMQP_CREDENTIALS")
 
 	a := amqpsource.Adapter{
 		SourceURI: source,
 		SinkURI:   sink,
 		Credit:    credit,
-		RootCA:    rootca,
+		CredsPath: credsPath,
 	}
 
 	logger.Info("Starting AMQP Adapter. %v", zap.Reflect("adapter", a))
