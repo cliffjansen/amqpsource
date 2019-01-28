@@ -26,7 +26,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// ZZZ doc here
 type AdapterArguments struct {
 	Image   string
 	Source  *v1alpha1.AmqpSource

@@ -67,13 +67,12 @@ type Adapter struct {
 var msgCount = int64(0)
 
 
-// Run creates a single AMQP connection/session/receiver to read messages, convert each to
-// a cloudevent and delivers to the sink.
+// Run creates a single AMQP connection/session/receiver to read messages, converts each
+// message to a cloudevent and delivers it to the sink.
 func (a *Adapter) Start() error {
-	//logger := logging.FromContext(context.TODO())
+	// logger := logging.FromContext(context.TODO())
 	// TODO: set up signals so we handle the first shutdown signal gracefully
 
-	log.Printf("Start with ZZZ1  : %s and %s", a.SourceURI, os.Getenv("HOSTNAME"))
 	// Use Kubernetes PODNAME-uuid as descriptive and unique AMQP container name:
 	container := electron.NewContainer(fmt.Sprintf("%s", os.Getenv("HOSTNAME")))
 
@@ -108,7 +107,6 @@ func (a *Adapter) Start() error {
 			} else {
 				log.Printf("Failed to post message: %s", err)
 				rm.Reject()
-				fatalIf(err)
 			}
 		} else {
 			log.Printf("Failed to receive: %s", err)
@@ -142,9 +140,7 @@ func (a *Adapter) postMessage(m *amqp.Message) error {
 			rdr = newAmqpBodyReader(body.(amqp.Binary).String())
 		}
 	default:
-		log.Printf("body switch whoops")
-		ctype = "application/ZZZ"
-		rdr = newAmqpBodyReader("ZZZ and ZZZ")
+		return fmt.Errorf("AMQP message format not supported")
 	}
 
 	ctx := cloudevents.EventContext{
@@ -246,12 +242,10 @@ func (a *Adapter) applyConfig(u *url.URL) {
 			if u.User == nil {
 				u.User = url.UserPassword(config.User, config.Password)
 			}
-			log.Printf("config got with ZZZ1  : %v", config)
 		}
 	}
 	if b, err = ioutil.ReadFile(cdir + "tls.ca"); err == nil {
 		a.RootCA = b
-		log.Printf("tls.ca found with ZZZ1  : %v", b)
 	}
 }
 
