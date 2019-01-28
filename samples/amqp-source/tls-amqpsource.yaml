@@ -1,0 +1,22 @@
+# Create secret and replace the following before applying this file:
+#   metadata/name: your chosen name for the AmqpSource instance
+#   spec/address:  endpoint AMQP address (queue or topic)
+#   spec/configSecret/name: Kubernetes secret holding connection details
+#   spec/sink/name: actual name of the target channel
+#
+# kubectl create secret generic my-tls-secret --from-file=connect-config=/path/to/connect-config.json --from-file=tls.ca=/path/to/the_ca.pem --namespace default
+
+apiVersion: sources.eventing.knative.dev/v1alpha1
+kind: AmqpSource
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: my-amqpsource
+spec:
+  address: "queue_or_topic"
+  configSecret:
+    name: my-tls-secret
+  sink:
+    apiVersion: eventing.knative.dev/v1alpha1
+    kind: Channel
+    name: my-target-channel

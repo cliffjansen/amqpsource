@@ -1,0 +1,17 @@
+# Replace the following before applying this file:
+#   metadata/name: your chosen name for the AmqpSource instance
+#   spec/address:  AMQP URI for endpoint
+#   spec/sink/name: actual name of the target channel
+
+apiVersion: sources.eventing.knative.dev/v1alpha1
+kind: AmqpSource
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: my-amqpsource
+spec:
+  address: "amqp://amqp_host:port/queue_or_topic_endpoint"
+  sink:
+    apiVersion: eventing.knative.dev/v1alpha1
+    kind: Channel
+    name: my-target-channel

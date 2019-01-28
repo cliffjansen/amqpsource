@@ -1,0 +1,7 @@
+{ 
+  "scheme": "amqps",
+  "host": "amqp_host", 
+  "port": "amqp[s]_port",
+  "user": "usrxyz",
+  "password": "passwdabc"
+}
